@@ -1,0 +1,225 @@
+name: shop-demo
+services:
+  frontend:
+    restart: unless-stopped
+    container_name: shop-frontend
+    image: shop-demo/frontend:1.0.0
+    logging:
+      driver: json-file
+      options:
+        max-file: "3"
+        max-size: 10m
+    networks:
+      shop-net: null
+    build:
+      context: /home/ubuntu/30251_observability/app/frontend
+      dockerfile: Dockerfile
+    depends_on:
+      order-service:
+        condition: service_healthy
+        required: true
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 80
+        published: "8080"
+        protocol: tcp
+  grafana:
+    restart: unless-stopped
+    container_name: grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: admin
+    env_file:
+      - path: /home/ubuntu/30251_observability/.env
+    image: grafana/grafana:11.3.0
+    networks:
+      shop-net: null
+    volumes:
+      - type: volume
+        source: grafana-data
+        target: /var/lib/grafana
+        volume: {}
+      - type: bind
+        source: /home/ubuntu/30251_observability/grafana/provisioning
+        target: /etc/grafana/provisioning
+        read_only: true
+        bind: {}
+      - type: bind
+        source: /home/ubuntu/30251_observability/grafana/dashboards
+        target: /var/lib/grafana/dashboards
+        read_only: true
+        bind: {}
+    depends_on:
+      loki:
+        condition: service_started
+        required: true
+      prometheus:
+        condition: service_started
+        required: true
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 3000
+        published: "3000"
+        protocol: tcp
+  inventory-service:
+    restart: unless-stopped
+    container_name: shop-inventory-service
+    environment:
+      INVENTORY_ERROR_RATE: "0.05"
+      INVENTORY_SLOW_RATE: "0.10"
+    image: shop-demo/inventory-service:1.0.0
+    logging:
+      driver: json-file
+      options:
+        max-file: "3"
+        max-size: 10m
+    networks:
+      shop-net: null
+    build:
+      context: /home/ubuntu/30251_observability/app/inventory-service
+      dockerfile: Dockerfile
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 8002
+        published: "8002"
+        protocol: tcp
+  loki:
+    restart: unless-stopped
+    container_name: loki
+    command:
+      - -config.file=/etc/loki/loki-config.yaml
+    image: grafana/loki:3.2.1
+    networks:
+      shop-net: null
+    volumes:
+      - type: bind
+        source: /home/ubuntu/30251_observability/loki/loki-config.yaml
+        target: /etc/loki/loki-config.yaml
+        read_only: true
+        bind: {}
+      - type: volume
+        source: loki-data
+        target: /loki
+        volume: {}
+    ports:
+      - mode: ingress
+        host_ip: 172.17.0.1
+        target: 3100
+        published: "3100"
+        protocol: tcp
+  node-exporter:
+    restart: unless-stopped
+    container_name: node-exporter
+    command:
+      - --path.rootfs=/host
+    image: prom/node-exporter:v1.8.2
+    networks:
+      shop-net: null
+    pid: host
+    volumes:
+      - type: bind
+        source: /
+        target: /host
+        read_only: true
+        bind:
+          propagation: rslave
+  order-service:
+    restart: unless-stopped
+    container_name: shop-order-service
+    environment:
+      DOWNSTREAM_TIMEOUT_SECONDS: "2"
+      INVENTORY_URL: http://inventory-service:8002
+      ORDER_ERROR_RATE: "0.03"
+      PAYMENT_URL: http://payment-service:8001
+    image: shop-demo/order-service:1.0.0
+    logging:
+      driver: json-file
+      options:
+        max-file: "3"
+        max-size: 10m
+    networks:
+      shop-net: null
+    build:
+      context: /home/ubuntu/30251_observability/app/order-service
+      dockerfile: Dockerfile
+    depends_on:
+      inventory-service:
+        condition: service_healthy
+        required: true
+      payment-service:
+        condition: service_healthy
+        required: true
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 8000
+        published: "8000"
+        protocol: tcp
+  payment-service:
+    restart: unless-stopped
+    container_name: shop-payment-service
+    environment:
+      PAYMENT_DECLINE_RATE: "0.10"
+      PAYMENT_ERROR_RATE: "0.05"
+      PAYMENT_TIMEOUT_RATE: "0.03"
+    image: shop-demo/payment-service:1.0.0
+    logging:
+      driver: json-file
+      options:
+        max-file: "3"
+        max-size: 10m
+    networks:
+      shop-net: null
+    build:
+      context: /home/ubuntu/30251_observability/app/payment-service
+      dockerfile: Dockerfile
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 8001
+        published: "8001"
+        protocol: tcp
+  prometheus:
+    restart: unless-stopped
+    container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+    image: prom/prometheus:v2.55.1
+    networks:
+      shop-net: null
+    volumes:
+      - type: bind
+        source: /home/ubuntu/30251_observability/prometheus/prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
+        bind: {}
+      - type: volume
+        source: prometheus-data
+        target: /prometheus
+        volume: {}
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 9090
+        published: "9090"
+        protocol: tcp
+networks:
+  shop-net:
+    name: shop-net
+volumes:
+  grafana-data:
+    name: shop-demo_grafana-data
+  loki-data:
+    name: shop-demo_loki-data
+  prometheus-data:
+    name: shop-demo_prometheus-data
+x-logging:
+  driver: json-file
+  options:
+    max-file: "3"
+    max-size: 10m

@@ -1,0 +1,18 @@
+# secrets and local config
+.env
+*.env
+!.env.example
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# node
+node_modules/
+dist/
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store

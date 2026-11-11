@@ -1,0 +1,9 @@
+NAME                     IMAGE                                                                     COMMAND                  SERVICE             CREATED        STATUS                  PORTS
+grafana                  grafana/grafana:11.3.0                                                    "/run.sh"                grafana             20 hours ago   Up About an hour        127.0.0.1:3000->3000/tcp
+loki                     grafana/loki:3.2.1                                                        "/usr/bin/loki -conf…"   loki                20 hours ago   Up 20 hours             172.17.0.1:3100->3100/tcp
+node-exporter            prom/node-exporter:v1.8.2                                                 "/bin/node_exporter …"   node-exporter       20 hours ago   Up 20 hours             9100/tcp
+prometheus               prom/prometheus:v2.55.1                                                   "/bin/prometheus --c…"   prometheus          20 hours ago   Up 20 hours             127.0.0.1:9090->9090/tcp
+shop-frontend            sha256:3ab1d7d1d29e96811a3f91dbebe58e684d8a948afb326873cba215119687c157   "/docker-entrypoint.…"   frontend            21 hours ago   Up 21 hours (healthy)   127.0.0.1:8080->80/tcp
+shop-inventory-service   sha256:16c932d15aa01a3602803d2a7b3e0e56dc18e009b5297efae8ae307fde1efa7e   "uvicorn main:app --…"   inventory-service   21 hours ago   Up 21 hours (healthy)   127.0.0.1:8002->8002/tcp
+shop-order-service       sha256:951b8f62fa489356058d6474319ad429ba285bb19e82e48b8100b443c16ae59f   "uvicorn main:app --…"   order-service       21 hours ago   Up 2 hours (healthy)    127.0.0.1:8000->8000/tcp
+shop-payment-service     sha256:734076691b70679175416bc429ac714fcd5b038fc6f506550a12f5a5ab83cc12   "uvicorn main:app --…"   payment-service     21 hours ago   Up 21 hours (healthy)   127.0.0.1:8001->8001/tcp

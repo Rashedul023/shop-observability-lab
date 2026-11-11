@@ -1,0 +1,19 @@
+NAME                                READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/frontend            1/1     1            1           20h
+deployment.apps/inventory-service   1/1     1            1           20h
+deployment.apps/order-service       1/1     1            1           20h
+deployment.apps/payment-service     1/1     1            1           20h
+deployment.apps/traffic-generator   1/1     1            1           20h
+
+NAME                        TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
+service/frontend            NodePort    10.152.183.134   <none>        80:30080/TCP   20h
+service/inventory-service   ClusterIP   10.152.183.66    <none>        8002/TCP       20h
+service/order-service       ClusterIP   10.152.183.140   <none>        8000/TCP       20h
+service/payment-service     ClusterIP   10.152.183.37    <none>        8001/TCP       20h
+
+NAME                                     READY   STATUS    RESTARTS   AGE
+pod/frontend-5f7bfc6f-cb2xx              1/1     Running   0          20h
+pod/inventory-service-859b6bf94f-868nc   1/1     Running   0          20h
+pod/order-service-8465bf5c5b-j4nhl       1/1     Running   0          20h
+pod/payment-service-5fb59c9bf7-b9wln     1/1     Running   0          20h
+pod/traffic-generator-9c7d89b85-s5zft    1/1     Running   0          20h

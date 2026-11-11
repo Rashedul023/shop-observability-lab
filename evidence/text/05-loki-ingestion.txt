@@ -1,0 +1,3 @@
+# HELP loki_distributor_lines_received_total The total number of lines received per tenant
+# TYPE loki_distributor_lines_received_total counter
+loki_distributor_lines_received_total{aggregated_metric="false",tenant="fake"} 601670

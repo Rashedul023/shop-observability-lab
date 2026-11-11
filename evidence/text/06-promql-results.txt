@@ -1,0 +1,88 @@
+### 100 - avg(rate(node_cpu_seconds_total{mode="idle"}[1m])) * 100
+{
+    "status": "success",
+    "data": {
+        "resultType": "vector",
+        "result": [
+            {
+                "metric": {},
+                "value": [
+                    1794392190.36,
+                    "15.67777777777843"
+                ]
+            }
+        ]
+    }
+}
+
+### 100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
+{
+    "status": "success",
+    "data": {
+        "resultType": "vector",
+        "result": [
+            {
+                "metric": {
+                    "instance": "node-exporter:9100",
+                    "job": "node"
+                },
+                "value": [
+                    1794392190.41,
+                    "24.583106631157946"
+                ]
+            }
+        ]
+    }
+}
+
+### sum(rate(http_requests_total[1m]))
+{
+    "status": "success",
+    "data": {
+        "resultType": "vector",
+        "result": [
+            {
+                "metric": {},
+                "value": [
+                    1794392190.456,
+                    "0.13333333333333333"
+                ]
+            }
+        ]
+    }
+}
+
+### 100 * sum(rate(http_requests_total{status=~"5.."}[1m])) / sum(rate(http_requests_total[1m]))
+{
+    "status": "success",
+    "data": {
+        "resultType": "vector",
+        "result": [
+            {
+                "metric": {},
+                "value": [
+                    1794392190.502,
+                    "0"
+                ]
+            }
+        ]
+    }
+}
+
+### histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))
+{
+    "status": "success",
+    "data": {
+        "resultType": "vector",
+        "result": [
+            {
+                "metric": {},
+                "value": [
+                    1794392190.549,
+                    "1.4808586763322877"
+                ]
+            }
+        ]
+    }
+}
+

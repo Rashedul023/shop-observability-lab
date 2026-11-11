@@ -1,0 +1,161 @@
+# Shop demo: 3 FastAPI microservices + React frontend (+ optional traffic generator)
+# + monitoring stack: Prometheus, Grafana, Node Exporter, Loki
+#
+#   docker compose up -d --build                          # start the app
+#   docker compose --profile loadgen up -d                # also start steady background traffic
+#
+# All published ports are bound to 127.0.0.1 (laptop only, never a public interface),
+# except Loki, which is bound to the docker0 bridge IP so MicroK8s pods can reach it.
+
+name: shop-demo
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  frontend:
+    build: ./app/frontend
+    image: shop-demo/frontend:1.0.0
+    container_name: shop-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      order-service:
+        condition: service_healthy
+    networks: [shop-net]
+    logging: *default-logging
+
+  order-service:
+    build: ./app/order-service
+    image: shop-demo/order-service:1.0.0
+    container_name: shop-order-service
+    restart: unless-stopped
+    environment:
+      INVENTORY_URL: http://inventory-service:8002
+      PAYMENT_URL: http://payment-service:8001
+      DOWNSTREAM_TIMEOUT_SECONDS: ${DOWNSTREAM_TIMEOUT_SECONDS:-2}
+      ORDER_ERROR_RATE: ${ORDER_ERROR_RATE:-0.03}
+    ports:
+      - "127.0.0.1:${ORDER_PORT:-8000}:8000"
+    depends_on:
+      inventory-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+    networks: [shop-net]
+    logging: *default-logging
+
+  payment-service:
+    build: ./app/payment-service
+    image: shop-demo/payment-service:1.0.0
+    container_name: shop-payment-service
+    restart: unless-stopped
+    environment:
+      PAYMENT_DECLINE_RATE: ${PAYMENT_DECLINE_RATE:-0.10}
+      PAYMENT_ERROR_RATE: ${PAYMENT_ERROR_RATE:-0.05}
+      PAYMENT_TIMEOUT_RATE: ${PAYMENT_TIMEOUT_RATE:-0.03}
+    ports:
+      - "127.0.0.1:${PAYMENT_PORT:-8001}:8001"
+    networks: [shop-net]
+    logging: *default-logging
+
+  inventory-service:
+    build: ./app/inventory-service
+    image: shop-demo/inventory-service:1.0.0
+    container_name: shop-inventory-service
+    restart: unless-stopped
+    environment:
+      INVENTORY_ERROR_RATE: ${INVENTORY_ERROR_RATE:-0.05}
+      INVENTORY_SLOW_RATE: ${INVENTORY_SLOW_RATE:-0.10}
+    ports:
+      - "127.0.0.1:${INVENTORY_PORT:-8002}:8002"
+    networks: [shop-net]
+    logging: *default-logging
+
+  # Optional: keeps a steady stream of orders flowing so graphs and logs are never empty.
+  traffic-generator:
+    profiles: ["loadgen"]
+    build: ./app/traffic-generator
+    image: shop-demo/traffic-generator:1.0.0
+    container_name: shop-traffic-generator
+    restart: unless-stopped
+    environment:
+      TARGET_URL: http://order-service:8000
+      RATE: ${LOADGEN_RATE:-2}
+      WAVE: ${LOADGEN_WAVE:-true}
+    depends_on:
+      order-service:
+        condition: service_healthy
+    networks: [shop-net]
+    logging: *default-logging
+
+  # ------------------------- Monitoring stack -------------------------
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks: [shop-net]
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: node-exporter
+    restart: unless-stopped
+    command:
+      - --path.rootfs=/host
+    volumes:
+      - /:/host:ro,rslave
+    pid: host
+    networks: [shop-net]
+
+  loki:
+    image: grafana/loki:3.2.1
+    container_name: loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yaml
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "172.17.0.1:3100:3100"
+    networks: [shop-net]
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: grafana
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on: [prometheus, loki]
+    networks: [shop-net]
+
+networks:
+  shop-net:
+    # Fixed name, so your own monitoring stack can join it:
+    #   networks: { shop-net: { external: true } }
+    name: shop-net
+
+volumes:
+  prometheus-data:
+  loki-data:
+  grafana-data:

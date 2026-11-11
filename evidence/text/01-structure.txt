@@ -1,0 +1,68 @@
+.
+├── .env
+├── .env.example
+├── .gitignore
+├── README.md
+├── alerting
+│   └── configuration-notes.md
+├── app
+│   ├── frontend
+│   │   ├── .dockerignore
+│   │   ├── Dockerfile
+│   │   ├── index.html
+│   │   ├── nginx.conf
+│   │   ├── package-lock.json
+│   │   ├── package.json
+│   │   ├── src
+│   │   │   ├── App.jsx
+│   │   │   ├── main.jsx
+│   │   │   └── styles.css
+│   │   └── vite.config.js
+│   ├── inventory-service
+│   │   ├── .dockerignore
+│   │   ├── Dockerfile
+│   │   ├── main.py
+│   │   └── requirements.txt
+│   ├── order-service
+│   │   ├── .dockerignore
+│   │   ├── Dockerfile
+│   │   ├── main.py
+│   │   └── requirements.txt
+│   ├── payment-service
+│   │   ├── .dockerignore
+│   │   ├── Dockerfile
+│   │   ├── main.py
+│   │   └── requirements.txt
+│   └── traffic-generator
+│       ├── .dockerignore
+│       ├── Dockerfile
+│       ├── generator.py
+│       └── requirements.txt
+├── compose.yaml
+├── compose.yaml.bak
+├── evidence
+│   ├── environment.txt
+│   └── text
+│       ├── 01-structure.txt
+│       └── 01-toolchain.txt
+├── grafana
+│   ├── dashboards
+│   │   └── shop.json
+│   └── provisioning
+│       ├── dashboards
+│       │   └── dashboards.yaml
+│       └── datasources
+│           └── datasources.yaml
+├── kubernetes
+│   ├── alloy-values.yaml
+│   ├── namespace.yaml
+│   └── workload.yaml
+├── loki
+│   └── loki-config.yaml
+├── prometheus
+│   └── prometheus.yml
+└── scripts
+    ├── build-and-load-k8s.sh
+    └── traffic-test.sh
+
+20 directories, 46 files

@@ -1,0 +1,249 @@
+# Shop demo workload for MicroK8s (namespace: shop-demo)
+# Apply with: microk8s kubectl apply -f kubernetes/namespace.yaml -f kubernetes/workload.yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-service
+  namespace: shop-demo
+  labels: { app: inventory-service, app.kubernetes.io/part-of: shop-demo }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: inventory-service }
+  template:
+    metadata:
+      labels: { app: inventory-service, app.kubernetes.io/part-of: shop-demo }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8002"
+        prometheus.io/path: /metrics
+    spec:
+      containers:
+        - name: inventory-service
+          image: shop-demo/inventory-service:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 8002 }
+          env:
+            - { name: INVENTORY_ERROR_RATE, value: "0.05" }
+            - { name: INVENTORY_SLOW_RATE, value: "0.10" }
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          readinessProbe:
+            httpGet: { path: /health, port: 8002 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 8002 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-service
+  namespace: shop-demo
+  labels: { app: inventory-service }
+spec:
+  type: ClusterIP
+  selector: { app: inventory-service }
+  ports:
+    - name: http
+      port: 8002
+      targetPort: 8002
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: shop-demo
+  labels: { app: payment-service, app.kubernetes.io/part-of: shop-demo }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: payment-service }
+  template:
+    metadata:
+      labels: { app: payment-service, app.kubernetes.io/part-of: shop-demo }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8001"
+        prometheus.io/path: /metrics
+    spec:
+      containers:
+        - name: payment-service
+          image: shop-demo/payment-service:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 8001 }
+          env:
+            - { name: PAYMENT_DECLINE_RATE, value: "0.10" }
+            - { name: PAYMENT_ERROR_RATE, value: "0.05" }
+            - { name: PAYMENT_TIMEOUT_RATE, value: "0.03" }
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          readinessProbe:
+            httpGet: { path: /health, port: 8001 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 8001 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+  namespace: shop-demo
+  labels: { app: payment-service }
+spec:
+  type: ClusterIP
+  selector: { app: payment-service }
+  ports:
+    - name: http
+      port: 8001
+      targetPort: 8001
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: shop-demo
+  labels: { app: order-service, app.kubernetes.io/part-of: shop-demo }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: order-service }
+  template:
+    metadata:
+      labels: { app: order-service, app.kubernetes.io/part-of: shop-demo }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: /metrics
+    spec:
+      containers:
+        - name: order-service
+          image: shop-demo/order-service:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 8000 }
+          env:
+            - { name: INVENTORY_URL, value: "http://inventory-service:8002" }
+            - { name: PAYMENT_URL, value: "http://payment-service:8001" }
+            - { name: DOWNSTREAM_TIMEOUT_SECONDS, value: "2" }
+            - { name: ORDER_ERROR_RATE, value: "0.03" }
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: shop-demo
+  labels: { app: order-service }
+spec:
+  type: ClusterIP
+  selector: { app: order-service }
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: shop-demo
+  labels: { app: frontend, app.kubernetes.io/part-of: shop-demo }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: frontend }
+  template:
+    metadata:
+      labels: { app: frontend, app.kubernetes.io/part-of: shop-demo }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: /metrics
+    spec:
+      containers:
+        - name: frontend
+          image: shop-demo/frontend:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 80 }
+          readinessProbe:
+            httpGet: { path: /healthz, port: 80 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: 80 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: shop-demo
+  labels: { app: frontend }
+spec:
+  type: NodePort
+  selector: { app: frontend }
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      nodePort: 30080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traffic-generator
+  namespace: shop-demo
+  labels: { app: traffic-generator, app.kubernetes.io/part-of: shop-demo }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: traffic-generator }
+  template:
+    metadata:
+      labels: { app: traffic-generator, app.kubernetes.io/part-of: shop-demo }
+    spec:
+      containers:
+        - name: traffic-generator
+          image: shop-demo/traffic-generator:1.0.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - { name: TARGET_URL, value: "http://order-service:8000" }
+            - { name: RATE, value: "1" }
+            - { name: WAVE, value: "true" }
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 256Mi }
